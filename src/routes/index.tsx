@@ -91,7 +91,7 @@ function Index() {
             />
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
               <span className="text-muted-foreground">Try an example:</span>
-              {["Real listing", "Payment scam", "Fee scam"].map((label, i) => (
+              {["Real listing", "Fee scam", "Payment scam"].map((label, i) => (
                 <button
                   key={label}
                   onClick={() => setText(samples[i] ?? "")}
