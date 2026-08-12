@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge, Link2, Loader2 } from "lucide-react";
+import { TriangleAlert as AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge, Link2, Loader as Loader2 } from "lucide-react";
 import { predict, evaluate } from "@/lib/model";
 import { DATASET } from "@/lib/dataset";
 import { fetchPosting } from "@/lib/fetch-url.functions";
@@ -114,37 +114,71 @@ function Index() {
         </header>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-          <div className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur" style={{ boxShadow: "var(--shadow-panel)" }}>
-            <label htmlFor="post" className="text-sm font-medium text-foreground">
-              Job posting text
-            </label>
-            <textarea
-              id="post"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Paste the full advert here — title, description, requirements, contact details…"
-              className="mt-3 h-72 w-full resize-none rounded-lg border border-input bg-background/60 p-4 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Try an example:</span>
-              {["Real listing", "Fee scam", "Payment scam"].map((label, i) => (
-                <button
-                  key={label}
-                  onClick={() => setText(samples[i] ?? "")}
-                  className="rounded-md border border-border bg-secondary px-2.5 py-1 font-medium text-secondary-foreground transition-colors hover:border-primary/60 hover:text-primary"
-                >
-                  {label}
-                </button>
-              ))}
-              {text && (
-                <button
-                  onClick={() => setText("")}
-                  className="rounded-md px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                >
-                  Clear
-                </button>
-              )}
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur" style={{ boxShadow: "var(--shadow-panel)" }}>
+              <label htmlFor="post" className="text-sm font-medium text-foreground">
+                Job posting text
+              </label>
+              <textarea
+                id="post"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Paste the full advert here — title, description, requirements, contact details…"
+                className="mt-3 h-72 w-full resize-none rounded-lg border border-input bg-background/60 p-4 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+              />
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Try an example:</span>
+                {["Real listing", "Fee scam", "Payment scam"].map((label, i) => (
+                  <button
+                    key={label}
+                    onClick={() => setText(samples[i] ?? "")}
+                    className="rounded-md border border-border bg-secondary px-2.5 py-1 font-medium text-secondary-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  >
+                    {label}
+                  </button>
+                ))}
+                {text && (
+                  <button
+                    onClick={() => setText("")}
+                    className="rounded-md px-2.5 py-1 text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
+
+            <form onSubmit={scanUrl} className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur">
+              <label htmlFor="url" className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Link2 className="h-4 w-4 text-primary" /> Check a link
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paste the job-post URL and we'll fetch the page text and inspect the domain for scam signals.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  id="url"
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://jobs.example.com/senior-engineer"
+                  className="flex-1 rounded-lg border border-input bg-background/60 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !url.trim()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  {loading ? "Checking" : "Check"}
+                </button>
+              </div>
+              {urlError && (
+                <p className="mt-2 text-sm text-danger">{urlError}</p>
+              )}
+            </form>
+
+            {urlInsight && <UrlInsightPanel insight={urlInsight} title={pageTitle} />}
           </div>
 
           <div className="space-y-4">
@@ -282,6 +316,62 @@ function ResultPanel({ result }: { result: ReturnType<typeof predict> | null }) 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function UrlInsightPanel({
+  insight,
+  title,
+}: {
+  insight: { host: string; flags: UrlFlag[]; trusted: boolean };
+  title: string | null;
+}) {
+  const hits = insight.flags.filter((f) => f.hit);
+  return (
+    <div className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Link2 className="h-4 w-4 text-primary" /> Link report
+          </h3>
+          {title && (
+            <p className="mt-1 truncate text-xs text-muted-foreground" title={title}>
+              {title}
+            </p>
+          )}
+          <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={insight.host}>
+            {insight.host}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
+            insight.trusted
+              ? "border-success/40 bg-success/10 text-success"
+              : "border-border bg-secondary text-secondary-foreground"
+          }`}
+        >
+          {insight.trusted ? "Known job board" : "Independent domain"}
+        </span>
+      </div>
+
+      <div className="mt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Link flags {hits.length > 0 && `(${hits.length})`}
+        </h4>
+        {hits.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">No link-level warnings detected.</p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {hits.map((f) => (
+              <li key={f.id} className="flex items-start gap-2 text-sm text-foreground">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
