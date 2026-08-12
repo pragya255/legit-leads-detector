@@ -76,17 +76,18 @@ function vectorize(text: string, m: Pick<Model, "vocab" | "idf" | "dim" | "extra
   const toks = tokenize(text);
   for (const t of toks) {
     const i = m.vocab.get(t);
-    if (i !== undefined) v[i] += 1;
+    if (i !== undefined) v[i] = (v[i] ?? 0) + 1;
   }
   let norm = 0;
   for (let i = 0; i < m.vocab.size; i++) {
-    if (v[i]) v[i] = (1 + Math.log(v[i])) * m.idf[i];
-    norm += v[i] * v[i];
+    const raw = v[i] ?? 0;
+    if (raw) v[i] = (1 + Math.log(raw)) * (m.idf[i] ?? 1);
+    norm += (v[i] ?? 0) ** 2;
   }
   norm = Math.sqrt(norm) || 1;
-  for (let i = 0; i < m.vocab.size; i++) v[i] /= norm;
+  for (let i = 0; i < m.vocab.size; i++) v[i] = (v[i] ?? 0) / norm;
   const eng = engineered(text);
-  for (let j = 0; j < m.extra; j++) v[m.vocab.size + j] = eng[j];
+  for (let j = 0; j < m.extra; j++) v[m.vocab.size + j] = eng[j] ?? 0;
   return v;
 }
 
