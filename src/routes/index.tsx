@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge, Link2, Loader2 } from "lucide-react";
 import { predict, evaluate } from "@/lib/model";
 import { DATASET } from "@/lib/dataset";
+import { fetchPosting } from "@/lib/fetch-url.functions";
+import { analyzeUrl, isTrustedBoard, type UrlFlag } from "@/lib/url-flags";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,13 +55,46 @@ const VERDICTS = {
 
 function Index() {
   const [text, setText] = useState("");
+  const [url, setUrl] = useState("");
+  const [scannedUrl, setScannedUrl] = useState<string | null>(null);
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const runFetch = useServerFn(fetchPosting);
+
   const metrics = useMemo(() => evaluate(), []);
   const result = useMemo(() => (text.trim().length > 25 ? predict(text) : null), [text]);
+
+  const urlInsight = useMemo(() => {
+    if (!scannedUrl) return null;
+    const { host, flags } = analyzeUrl(scannedUrl);
+    return { host, flags, trusted: isTrustedBoard(host) };
+  }, [scannedUrl]);
 
   const samples = useMemo(
     () => [DATASET[0]!.text, DATASET[DATASET.length - 3]!.text, DATASET[16]!.text],
     [],
   );
+
+  async function scanUrl(e: React.FormEvent) {
+    e.preventDefault();
+    const candidate = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+    if (!url.trim()) return;
+    setLoading(true);
+    setUrlError(null);
+    try {
+      const res = await runFetch({ data: { url: candidate } });
+      setText(res.text);
+      setScannedUrl(res.url);
+      setPageTitle(res.title);
+    } catch (err) {
+      setScannedUrl(null);
+      setPageTitle(null);
+      setUrlError(err instanceof Error ? err.message : "Could not read that link.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen" style={{ backgroundImage: "var(--gradient-hero)" }}>
