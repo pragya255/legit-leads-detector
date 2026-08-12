@@ -125,13 +125,14 @@ export function trainModel(): Model {
     const gw = new Float64Array(dim);
     let gb = 0;
     for (let n = 0; n < X.length; n++) {
+      const xn = X[n]!;
       let z = b;
-      for (let i = 0; i < dim; i++) z += w[i] * X[n][i];
-      const err = sigmoid(z) - y[n];
-      for (let i = 0; i < dim; i++) gw[i] += err * X[n][i];
+      for (let i = 0; i < dim; i++) z += w[i]! * xn[i]!;
+      const err = sigmoid(z) - (y[n] ?? 0);
+      for (let i = 0; i < dim; i++) gw[i] = gw[i]! + err * xn[i]!;
       gb += err;
     }
-    for (let i = 0; i < dim; i++) w[i] -= lr * (gw[i] / X.length + lambda * w[i]);
+    for (let i = 0; i < dim; i++) w[i] = w[i]! - lr * (gw[i]! / X.length + lambda * w[i]!);
     b -= lr * (gb / X.length);
   }
 
