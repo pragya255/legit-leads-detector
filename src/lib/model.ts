@@ -151,12 +151,12 @@ export function predict(text: string): Prediction {
   const m = trainModel();
   const v = vectorize(text, m);
   let z = m.b;
-  for (let i = 0; i < m.dim; i++) z += m.w[i] * v[i];
+  for (let i = 0; i < m.dim; i++) z += m.w[i]! * v[i]!;
   const probability = sigmoid(z);
 
   const contributions: { term: string; contribution: number }[] = [];
   for (const [term, i] of m.vocab) {
-    const c = m.w[i] * v[i];
+    const c = m.w[i]! * v[i]!;
     if (Math.abs(c) > 1e-4) contributions.push({ term, contribution: c });
   }
   contributions.sort((a, b2) => Math.abs(b2.contribution) - Math.abs(a.contribution));
