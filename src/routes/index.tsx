@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, Gauge, Link2, Loader2 } from "lucide-react";
 import { predict, evaluate } from "@/lib/model";
 import { DATASET } from "@/lib/dataset";
+import { fetchPosting } from "@/lib/fetch-url.functions";
+import { analyzeUrl, isTrustedBoard, type UrlFlag } from "@/lib/url-flags";
 
 export const Route = createFileRoute("/")({
   head: () => ({
